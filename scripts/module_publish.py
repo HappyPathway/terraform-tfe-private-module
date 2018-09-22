@@ -3,24 +3,10 @@ import requests
 import os
 import json
 import sys
-import hcl
 
-def sanitize_path(config):
-    path = os.path.expanduser(config)
-    path = os.path.expandvars(path)
-    path = os.path.abspath(path)
-    return path
-
-def tfe_token(tfe_api, config):
-    with open(sanitize_path(config), 'r') as fp:
-        obj = hcl.load(fp)
-    return obj.get('credentials').get(tfe_api).get('token')
-
+class ModulePublishException(Exception): pass
 
 def main(opt):
-    
-    with open(opt.config, 'r') as module_config:
-        data = json.loads(module_config.read())
 
     atlas_token = opt.token
     headers = {"Authorization": "Bearer {0}".format(atlas_token),
@@ -46,9 +32,13 @@ def main(opt):
 if __name__ == '__main__':
     from optparse import OptionParser
     parser = OptionParser()
-    parser.add_option("--token")
+    parser.add_option("--token", default=os.environ.get("ATLAS_TOKEN"))
     parser.add_option("--org")
-    parser.add_option("--api")
-    parser.add_option("--config")
+    parser.add_option("--api", default="app.terraform.io")
     opt, args = parser.parse_args()
+
+    if not opt.token:
+        raise ModulePublishException("No Token Set")
+    if not opt.org:
+        raise ModulePublishException("No Org Set")
     main(opt)
